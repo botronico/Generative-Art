@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import cv2
+from IPython.display import HTML
+from base64 import b64encode
+
+# Configuración
+fps = 30  # Cuadros por segundo
+seconds = 5  # Duración del video
+frames = fps * seconds  # Número total de cuadros
+output_filename = "generative_art.mp4"
+
+def generate_frame(t, ax):
+    ax.clear()
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.777)  # Relación de aspecto 9:16
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_frame_on(False)
+    ax.set_facecolor('black')  # Fondo negro
+    
+    np.random.seed(42)  # Mantener coherencia en el loop
+    num_shapes = 100  # Número de figuras
+    colors = plt.cm.viridis(np.linspace(0, 1, num_shapes))
+    
+    for i in range(num_shapes):
+        x, y = np.random.rand(), np.random.rand() * 1.777  # Ajustar a 9:16
+        size = np.random.rand() * 0.1
+        phase = (t / frames) * 2 * np.pi  # Fase para el loop
+        x += 0.1 * np.sin(phase)  # Movimiento sutil
+        y += 0.1 * np.cos(phase)
+        
+        shape_type = np.random.choice(['circle', 'square', 'triangle'])
+        
+        if shape_type == 'circle':
+            circle = plt.Circle((x % 1, y % 1.777), size, color=colors[i], alpha=0.6)
+            ax.add_patch(circle)
+        elif shape_type == 'square':
+            square = plt.Rectangle(((x - size/2) % 1, (y - size/2) % 1.777), size, size, color=colors[i], alpha=0.6)
+            ax.add_patch(square)
+        elif shape_type == 'triangle':
+            triangle = plt.Polygon(
+                [((x) % 1, (y + size) % 1.777), ((x - size) % 1, (y - size) % 1.777), ((x + size) % 1, (y - size) % 1.777)],
+                color=colors[i], alpha=0.6
+            )
+            ax.add_patch(triangle)
+
+def save_animation():
+    fig, ax = plt.subplots(figsize=(5, 9))  # Formato 9:16
+    fig.patch.set_facecolor('black')  # Fondo negro en toda la figura
+    
+    def update(t):
+        generate_frame(t, ax)
+        return ax.patches
+    
+    ani = animation.FuncAnimation(fig, update, frames=frames, interval=1000/fps, blit=False)
+    
+    from matplotlib.animation import FFMpegWriter
+    writer = FFMpegWriter(fps=fps, bitrate=1800)
+    ani.save(output_filename, writer=writer)
+    plt.close(fig)
+
+# Generar y guardar el video
+save_animation()
+
+# Función para visualizar el video en Google Colab
+def display_video(video_path):
+    with open(video_path, "rb") as video_file:
+        video_base64 = b64encode(video_file.read()).decode()
+    video_tag = f'''
+    <video width="360" height="640" controls loop autoplay>
+        <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
+    </video>
+    '''
+    return HTML(video_tag)
+
+# Mostrar el video en el notebook
+display_video(output_filename)
